@@ -17,6 +17,7 @@ import {
   BookResponse,
   CreateBookRequest,
   SearchBookRequest,
+  SimpleSearchBookRequest,
   UpdateBookRequest,
 } from '../model/book.model';
 import { WebResponse } from '../model/web.model';
@@ -61,6 +62,20 @@ export class BookController {
       isFinished: isFinished,
     };
     return await this.bookService.getAll(user, request);
+  }
+
+  @Get('/search')
+  @HttpCode(200)
+  async search(
+    @Auth() user: User,
+    @Query('q') q: string,
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+  ): Promise<WebResponse<BookResponse[]>> {
+    const request: SimpleSearchBookRequest = {
+      search: q,
+      page,
+    };
+    return await this.bookService.search(user, request);
   }
 
   @Get('/:id')

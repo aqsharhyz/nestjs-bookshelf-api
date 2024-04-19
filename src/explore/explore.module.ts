@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { ExploreService } from './explore.service';
 
-@Module({})
+@Module({
+  providers: [ExploreService]
+})
 export class ExploreModule {}

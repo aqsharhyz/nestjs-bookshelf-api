@@ -27,4 +27,9 @@ export class BookValidation {
     page: z.number().int().min(1).positive().optional().default(1),
     size: z.number().int().min(1).positive().optional().default(10),
   });
+
+  static readonly SIMPLE_SEARCH: ZodType = z.object({
+    search: z.string().min(1).max(100),
+    page: z.number().min(1).max(10000).optional().default(1),
+  });
 }

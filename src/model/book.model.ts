@@ -1,3 +1,5 @@
+import { CommentResponse } from './comment.model';
+
 export class BookResponse {
   id: number;
   title: string;
@@ -5,7 +7,9 @@ export class BookResponse {
   author: string;
   publisher: string;
   isFinished: boolean;
+  comments?: CommentResponse[];
 }
+
 export class CreateBookRequest {
   title: string;
   year: number;
@@ -32,4 +36,9 @@ export class SearchBookRequest {
   page?: number;
   size?: number;
   sort?: string;
+}
+
+export class SimpleSearchBookRequest {
+  search?: string;
+  page?: number;
 }

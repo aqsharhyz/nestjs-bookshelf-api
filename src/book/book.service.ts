@@ -6,18 +6,21 @@ import {
   BookResponse,
   CreateBookRequest,
   SearchBookRequest,
+  SimpleSearchBookRequest,
   UpdateBookRequest,
-} from 'src/model/book.model';
+} from '../model/book.model';
 import { Logger } from 'winston';
 import { User, Book } from '@prisma/client';
 import { BookValidation } from './book.validation';
-import { WebResponse } from 'src/model/web.model';
+import { WebResponse } from '../model/web.model';
+import { CommentService } from '../comment/comment.service';
 @Injectable()
 export class BookService {
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     private prismaService: PrismaService,
     private validationService: ValidationService,
+    private commentService: CommentService,
   ) {}
 
   async create(user: User, request: CreateBookRequest): Promise<BookResponse> {
@@ -45,7 +48,7 @@ export class BookService {
       data: { username: user.username, ...createRequest },
     });
 
-    return book;
+    return this.toBookResponse(book, user);
   }
 
   async getAll(
@@ -106,15 +109,15 @@ export class BookService {
       },
       take: searchRequest.size,
       skip,
-      select: {
-        id: true,
-        title: true,
-        author: true,
-        year: true,
-        publisher: true,
-        isFinished: true,
-        username: false,
-      },
+      // select: {
+      //   id: true,
+      //   title: true,
+      //   author: true,
+      //   year: true,
+      //   publisher: true,
+      //   isFinished: true,
+      //   username: false,
+      // },
     });
 
     const total = await this.prismaService.book.count({
@@ -130,7 +133,63 @@ export class BookService {
         current_page: searchRequest.page,
         total_page: Math.ceil(total / searchRequest.size),
       },
-      data: books.map((book) => book),
+      data: await Promise.all(
+        books.map(async (book) => await this.toBookResponse(book, user, false)),
+      ),
+    };
+  }
+
+  async search(
+    user: User,
+    request: SimpleSearchBookRequest,
+  ): Promise<WebResponse<BookResponse[]>> {
+    this.logger.debug(
+      `BookService.search(${user.username}, ${JSON.stringify(request)})`,
+    );
+
+    const searchRequest: SimpleSearchBookRequest =
+      this.validationService.validate(BookValidation.SIMPLE_SEARCH, request);
+
+    const filter = {
+      username: user.username,
+      OR: [
+        {
+          title: {
+            contains: searchRequest.search,
+          },
+        },
+        {
+          author: {
+            contains: searchRequest.search,
+          },
+        },
+        {
+          publisher: {
+            contains: searchRequest.search,
+          },
+        },
+      ],
+    };
+
+    const books = await this.prismaService.book.findMany({
+      where: filter,
+      take: 20,
+      skip: (searchRequest.page - 1) * 20,
+    });
+
+    const total: number = await this.prismaService.book.count({
+      where: filter,
+    });
+
+    return {
+      paging: {
+        size: books.length,
+        current_page: searchRequest.page,
+        total_page: Math.ceil(total / 20),
+      },
+      data: await Promise.all(
+        books.map(async (book) => await this.toBookResponse(book, user, false)),
+      ),
     };
   }
 
@@ -139,7 +198,7 @@ export class BookService {
 
     const book = await this.checkBookMustExists(user.username, id);
 
-    return book;
+    return await this.toBookResponse(book, user, true);
   }
 
   async update(user: User, request: UpdateBookRequest): Promise<BookResponse> {
@@ -175,7 +234,7 @@ export class BookService {
       data: updateRequest,
     });
 
-    return updatedBook;
+    return await this.toBookResponse(updatedBook, user, false);
   }
 
   async remove(user: User, id: number): Promise<BookResponse> {
@@ -187,7 +246,7 @@ export class BookService {
       },
     });
 
-    return book;
+    return await this.toBookResponse(book, user);
   }
 
   async checkBookMustExists(username: string, bookId: number): Promise<Book> {
@@ -203,5 +262,23 @@ export class BookService {
     }
 
     return book;
+  }
+
+  async toBookResponse(
+    book: Book,
+    user?: User,
+    withComments: boolean = false,
+  ): Promise<BookResponse> {
+    return {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      publisher: book.publisher,
+      year: book.year,
+      isFinished: book.isFinished,
+      comments: withComments
+        ? await this.commentService.getAll(user, book.id)
+        : undefined,
+    };
   }
 }
