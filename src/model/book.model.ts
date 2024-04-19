@@ -23,4 +23,13 @@ export class UpdateBookRequest {
   isFinished?: boolean;
 }
 
-// export class SearchBookRequest {}
+export class SearchBookRequest {
+  title?: string;
+  year?: number;
+  author?: string;
+  publisher?: string;
+  isFinished?: boolean;
+  page?: number;
+  size?: number;
+  sort?: string;
+}

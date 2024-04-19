@@ -8,15 +8,18 @@ import {
   Delete,
   HttpCode,
   ParseIntPipe,
+  Query,
+  ParseBoolPipe,
 } from '@nestjs/common';
 import { BookService } from './book.service';
-import { Auth } from 'src/common/auth.decorator';
+import { Auth } from '../common/auth.decorator';
 import {
   BookResponse,
   CreateBookRequest,
+  SearchBookRequest,
   UpdateBookRequest,
-} from 'src/model/book.model';
-import { WebResponse } from 'src/model/web.model';
+} from '../model/book.model';
+import { WebResponse } from '../model/web.model';
 import { User } from '@prisma/client';
 
 @Controller('/api/books')
@@ -37,11 +40,27 @@ export class BookController {
 
   @Get()
   @HttpCode(200)
-  async getAll(@Auth() user: User): Promise<WebResponse<BookResponse[]>> {
-    const result = await this.bookService.getAll(user);
-    return {
-      data: result,
+  async getAll(
+    @Auth() user: User,
+    @Query('title') title?: string,
+    @Query('author') author?: string,
+    @Query('publisher') publisher?: string,
+    @Query('year', new ParseIntPipe({ optional: true })) year?: number,
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('size', new ParseIntPipe({ optional: true })) size: number = 10,
+    @Query('isFinished', new ParseBoolPipe({ optional: true }))
+    isFinished?: boolean,
+  ): Promise<WebResponse<BookResponse[]>> {
+    const request: SearchBookRequest = {
+      title: title,
+      author: author,
+      publisher: publisher,
+      year: year,
+      page: page,
+      size: size,
+      isFinished: isFinished,
     };
+    return await this.bookService.getAll(user, request);
   }
 
   @Get('/:id')

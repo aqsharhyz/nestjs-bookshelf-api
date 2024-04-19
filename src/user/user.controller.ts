@@ -10,11 +10,12 @@ import {
 import { UserService } from './user.service';
 import {
   RegisterUserRequest,
-  UpdateUserRequest,
+  UpdateUserProfileRequest,
+  UpdateUserPasswordRequest,
   UserResponse,
 } from '../model/user.model';
-import { WebResponse } from 'src/model/web.model';
-import { Auth } from 'src/common/auth.decorator';
+import { WebResponse } from '../model/web.model';
+import { Auth } from '../common/auth.decorator';
 import { User } from '@prisma/client';
 
 @Controller('/api/user')
@@ -56,9 +57,21 @@ export class UserController {
   @HttpCode(200)
   async update(
     @Auth() user: User,
-    @Body() request: UpdateUserRequest,
+    @Body() request: UpdateUserProfileRequest,
   ): Promise<WebResponse<UserResponse>> {
-    const result = await this.userService.update(user, request);
+    const result = await this.userService.updateProfile(user, request);
+    return {
+      data: result,
+    };
+  }
+
+  @Patch('/current/password')
+  @HttpCode(200)
+  async updatePassword(
+    @Auth() user: User,
+    @Body() request: UpdateUserPasswordRequest,
+  ): Promise<WebResponse<UserResponse>> {
+    const result = await this.userService.updatePassword(user, request);
     return {
       data: result,
     };
@@ -66,10 +79,10 @@ export class UserController {
 
   @Delete('/current')
   @HttpCode(200)
-  async logout(@Auth() user: User): Promise<WebResponse<string>> {
-    const result = await this.userService.logout(user);
+  async logout(@Auth() user: User): Promise<WebResponse<boolean>> {
+    await this.userService.logout(user);
     return {
-      data: `User ${result} has been logged out`,
+      data: true,
     };
   }
 }

@@ -32,6 +32,6 @@ import { ErrorFilter } from './error.filter';
 })
 export class CommonModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthMiddleware).forRoutes('*');
+    consumer.apply(AuthMiddleware).forRoutes('/api/*');
   }
 }

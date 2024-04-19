@@ -1,15 +1,17 @@
 import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { PrismaService } from 'src/common/prisma.service';
-import { ValidationService } from 'src/common/validation.service';
+import { PrismaService } from '../common/prisma.service';
+import { ValidationService } from '../common/validation.service';
 import {
   BookResponse,
   CreateBookRequest,
+  SearchBookRequest,
   UpdateBookRequest,
 } from 'src/model/book.model';
 import { Logger } from 'winston';
 import { User, Book } from '@prisma/client';
 import { BookValidation } from './book.validation';
+import { WebResponse } from 'src/model/web.model';
 @Injectable()
 export class BookService {
   constructor(
@@ -46,16 +48,90 @@ export class BookService {
     return book;
   }
 
-  async getAll(user: User): Promise<BookResponse[]> {
-    this.logger.debug(`BookService.getAll(${JSON.stringify(user)})`);
+  async getAll(
+    user: User,
+    request: SearchBookRequest,
+  ): Promise<WebResponse<BookResponse[]>> {
+    this.logger.debug(
+      `BookService.getAll(${user.username}, ${JSON.stringify(request)})`,
+    );
+
+    const searchRequest: SearchBookRequest = this.validationService.validate(
+      BookValidation.SEARCH,
+      request,
+    );
+
+    const filters = [];
+
+    if (searchRequest.title) {
+      filters.push({
+        title: {
+          contains: searchRequest.title,
+        },
+      });
+    }
+
+    if (searchRequest.author) {
+      filters.push({
+        author: {
+          contains: searchRequest.author,
+        },
+      });
+    }
+
+    if (searchRequest.isFinished !== undefined) {
+      filters.push({
+        isFinished: {
+          equals: searchRequest.isFinished,
+        },
+      });
+    }
+
+    if (searchRequest.year) {
+      filters.push({
+        year: {
+          equals: searchRequest.year,
+        },
+      });
+    }
+
+    console.log(filters);
+
+    const skip = (searchRequest.page - 1) * searchRequest.size;
 
     const books = await this.prismaService.book.findMany({
       where: {
         username: user.username,
+        AND: filters,
+      },
+      take: searchRequest.size,
+      skip,
+      select: {
+        id: true,
+        title: true,
+        author: true,
+        year: true,
+        publisher: true,
+        isFinished: true,
+        username: false,
       },
     });
 
-    return books;
+    const total = await this.prismaService.book.count({
+      where: {
+        username: user.username,
+        AND: filters,
+      },
+    });
+
+    return {
+      paging: {
+        size: books.length,
+        current_page: searchRequest.page,
+        total_page: Math.ceil(total / searchRequest.size),
+      },
+      data: books.map((book) => book),
+    };
   }
 
   async getOne(user: User, id: number): Promise<BookResponse> {

@@ -1,12 +1,13 @@
 import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { PrismaService } from 'src/common/prisma.service';
-import { ValidationService } from 'src/common/validation.service';
+import { PrismaService } from '../common/prisma.service';
+import { ValidationService } from '../common/validation.service';
 import { Logger } from 'winston';
 import {
   LoginUserRequest,
   RegisterUserRequest,
-  UpdateUserRequest,
+  UpdateUserPasswordRequest,
+  UpdateUserProfileRequest,
   UserResponse,
 } from '../model/user.model';
 import { UserValidation } from './user.validation';
@@ -43,10 +44,7 @@ export class UserService {
       data: registerRequest,
     });
 
-    return {
-      username: user.username,
-      name: user.name,
-    };
+    return this.toUserResponse(user);
   }
 
   async login(request: LoginUserRequest): Promise<UserResponse> {
@@ -83,32 +81,22 @@ export class UserService {
       },
     });
 
-    return {
-      username: user.username,
-      name: user.name,
-      token: user.token,
-    };
+    return this.toUserResponse(user);
   }
 
   async get(user: User): Promise<UserResponse> {
-    return {
-      username: user.username,
-      name: user.name,
-    };
+    return this.toUserResponse(user);
   }
 
-  async update(user: User, request: UpdateUserRequest): Promise<UserResponse> {
+  async updateProfile(
+    user: User,
+    request: UpdateUserProfileRequest,
+  ): Promise<UserResponse> {
     this.logger.debug(
-      `UserService.update(${JSON.stringify(user)}, ${JSON.stringify(request)})`,
+      `UserService.update(${user.username}, ${JSON.stringify(request)})`,
     );
-    const updateRequest: UpdateUserRequest = this.validationService.validate(
-      UserValidation.UPDATE,
-      request,
-    );
-
-    if (updateRequest.password) {
-      updateRequest.password = await bcrypt.hash(updateRequest.password, 10);
-    }
+    const updateRequest: UpdateUserProfileRequest =
+      this.validationService.validate(UserValidation.UPDATE_PROFILE, request);
 
     const updatedUser = await this.prismaService.user.update({
       where: {
@@ -117,10 +105,29 @@ export class UserService {
       data: updateRequest,
     });
 
-    return {
-      username: updatedUser.username,
-      name: updatedUser.name,
-    };
+    return this.toUserResponse(updatedUser);
+  }
+
+  async updatePassword(
+    user: User,
+    request: UpdateUserPasswordRequest,
+  ): Promise<UserResponse> {
+    this.logger.debug(
+      `UserService.updatePassword(${user.username}, ${JSON.stringify(request)})`,
+    );
+
+    const updateRequest: UpdateUserPasswordRequest =
+      this.validationService.validate(UserValidation.UPDATE_PASSWORD, request);
+    const updatedUser = await this.prismaService.user.update({
+      where: {
+        username: user.username,
+      },
+      data: {
+        password: await bcrypt.hash(updateRequest.new_password, 10),
+      },
+    });
+
+    return this.toUserResponse(updatedUser);
   }
 
   async logout(user: User): Promise<UserResponse> {
@@ -133,9 +140,15 @@ export class UserService {
       },
     });
 
+    return this.toUserResponse(result);
+  }
+
+  async toUserResponse(user: User): Promise<UserResponse> {
     return {
-      username: result.username,
-      name: result.name,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      token: user.token,
     };
   }
 }
