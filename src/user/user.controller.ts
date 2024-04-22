@@ -13,8 +13,8 @@ import {
   UpdateUserProfileRequest,
   UpdateUserPasswordRequest,
   UserResponse,
-} from '../model/user.model';
-import { WebResponse } from '../model/web.model';
+} from './user.model';
+import { WebResponse } from '../common/web.model';
 import { Auth } from '../common/auth.decorator';
 import { User } from '@prisma/client';
 

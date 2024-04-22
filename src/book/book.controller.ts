@@ -19,8 +19,8 @@ import {
   SearchBookRequest,
   SimpleSearchBookRequest,
   UpdateBookRequest,
-} from '../model/book.model';
-import { WebResponse } from '../model/web.model';
+} from './book.model';
+import { WebResponse } from '../common/web.model';
 import { User } from '@prisma/client';
 
 @Controller('/api/books')

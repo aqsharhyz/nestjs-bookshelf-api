@@ -1,4 +1,4 @@
-import { HttpException, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { PrismaService } from '../common/prisma.service';
 import { ValidationService } from '../common/validation.service';
@@ -8,12 +8,13 @@ import {
   SearchBookRequest,
   SimpleSearchBookRequest,
   UpdateBookRequest,
-} from '../model/book.model';
+} from './book.model';
 import { Logger } from 'winston';
 import { User, Book } from '@prisma/client';
 import { BookValidation } from './book.validation';
-import { WebResponse } from '../model/web.model';
+import { WebResponse } from '../common/web.model';
 import { CommentService } from '../comment/comment.service';
+import { CategoryService } from 'src/category/category.service';
 @Injectable()
 export class BookService {
   constructor(
@@ -21,6 +22,7 @@ export class BookService {
     private prismaService: PrismaService,
     private validationService: ValidationService,
     private commentService: CommentService,
+    private categoryService: CategoryService,
   ) {}
 
   async create(user: User, request: CreateBookRequest): Promise<BookResponse> {
@@ -41,8 +43,20 @@ export class BookService {
     });
 
     if (ifBookExists != 0) {
-      throw new HttpException('Book already exists', 400);
+      throw new HttpException('Book already exists', HttpStatus.CONFLICT);
     }
+
+    if (
+      !(await this.categoryService.checkIfCategoryExist(
+        createRequest.categoryName,
+      ))
+    ) {
+      throw new HttpException('Category is not found', HttpStatus.BAD_REQUEST);
+    }
+
+    createRequest.categoryName = await this.categoryService.getCategoryId(
+      createRequest.categoryName,
+    );
 
     const book = await this.prismaService.book.create({
       data: { username: user.username, ...createRequest },
@@ -224,7 +238,23 @@ export class BookService {
     });
 
     if (ifBookExists != 0) {
-      throw new HttpException('Book with this title is already exists', 400);
+      throw new HttpException(
+        'Book with this title is already exists',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    if (updateRequest.categoryName) {
+      if (
+        !(await this.categoryService.checkIfCategoryExist(
+          updateRequest.categoryName,
+        ))
+      ) {
+        throw new HttpException(
+          'Category is not found',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
 
     const updatedBook = await this.prismaService.book.update({
@@ -258,7 +288,7 @@ export class BookService {
     });
 
     if (!book) {
-      throw new HttpException('Book is not found', 404);
+      throw new HttpException('Book is not found', HttpStatus.NOT_FOUND);
     }
 
     return book;
@@ -276,6 +306,8 @@ export class BookService {
       publisher: book.publisher,
       year: book.year,
       isFinished: book.isFinished,
+      categoryName: (await this.categoryService.getCategory(book.categoryName))
+        .name,
       comments: withComments
         ? await this.commentService.getAll(user, book.id)
         : undefined,

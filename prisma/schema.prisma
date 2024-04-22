@@ -14,52 +14,67 @@ datasource db {
 }
 
 model User {
-  username String   @id @db.VarChar(100)
-  password String   @db.VarChar(255)
-  email    String   @unique
-  name     String   @db.VarChar(255)
-  token    String?  @db.VarChar(255)
-  role     Role     @default(USER)
-  
+  username String  @id @db.VarChar(100)
+  password String  @db.VarChar(255)
+  email    String  @unique
+  name     String  @db.VarChar(255)
+  token    String? @db.VarChar(255)
+  role     Role    @default(USER)
+
   books    Book[]
   comments Comment[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@map("users")
 }
 
 model Book {
-  id          Int     @id @default(autoincrement())
-  title       String  @db.VarChar(255)
-  year        Int
-  author      String  @db.VarChar(255)
-  publisher   String  @db.VarChar(255)
-  isFinished  Boolean @default(false)
-  access      Access  @default(PRIVATE)
-  username    String  @db.VarChar(255)
-  comments    Comment[]
-  user        User     @relation(fields: [username], references: [username])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt @default(now())
-  
+  id         Int     @id @default(autoincrement())
+  title      String  @db.VarChar(255)
+  year       Int
+  author     String  @db.VarChar(255)
+  publisher  String  @db.VarChar(255)
+  isFinished Boolean @default(false)
+  access     Access  @default(PRIVATE)
+
+  username   String    @db.VarChar(255)
+  categoryId Int
+  comments   Comment[]
+
+  category Category @relation(fields: [categoryId], references: [id])
+  user     User     @relation(fields: [username], references: [username])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
   @@map("books")
 }
 
 model Comment {
-  id        Int       @id @default(autoincrement())
-  content   String    @db.VarChar(255)
-  bookId    Int
-  username  String    @db.VarChar(255)
-  
-  book      Book      @relation(fields: [bookId], references: [id])
-  user      User      @relation(fields: [username], references: [username])
+  id       Int    @id @default(autoincrement())
+  content  String @db.VarChar(255)
+  bookId   Int
+  username String @db.VarChar(255)
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt @default(now())
+  book Book @relation(fields: [bookId], references: [id])
+  user User @relation(fields: [username], references: [username])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@map("comments")
+}
+
+model Category {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.VarChar(100)
+  description String? @db.VarChar(100)
+
+  books Book[]
+
+  @@map("categories")
 }
 
 enum Role {

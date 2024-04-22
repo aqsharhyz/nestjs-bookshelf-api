@@ -9,7 +9,7 @@ import {
   UpdateUserPasswordRequest,
   UpdateUserProfileRequest,
   UserResponse,
-} from '../model/user.model';
+} from './user.model';
 import { UserValidation } from './user.validation';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';

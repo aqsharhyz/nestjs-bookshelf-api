@@ -1,4 +1,4 @@
-import { CommentResponse } from './comment.model';
+import { CommentResponse } from '../comment/comment.model';
 
 export class BookResponse {
   id: number;
@@ -7,6 +7,7 @@ export class BookResponse {
   author: string;
   publisher: string;
   isFinished: boolean;
+  categoryName: string | number;
   comments?: CommentResponse[];
 }
 
@@ -16,6 +17,7 @@ export class CreateBookRequest {
   author: string;
   publisher: string;
   isFinished: boolean;
+  categoryName: string | number;
 }
 
 export class UpdateBookRequest {
@@ -25,6 +27,7 @@ export class UpdateBookRequest {
   author?: string;
   publisher?: string;
   isFinished?: boolean;
+  categoryName?: string | number;
 }
 
 export class SearchBookRequest {
@@ -33,6 +36,7 @@ export class SearchBookRequest {
   author?: string;
   publisher?: string;
   isFinished?: boolean;
+  categoryName?: string;
   page?: number;
   size?: number;
   sort?: string;
